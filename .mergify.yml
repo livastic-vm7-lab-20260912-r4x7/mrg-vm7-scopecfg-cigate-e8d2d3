@@ -3,7 +3,7 @@ scopes:
     files:
       critical:
         include:
-          - safe/**
+          - critical/**
       docs:
         include:
           - docs/**
@@ -20,5 +20,6 @@ pull_request_rules:
   - name: gate1 trusted autoqueue
     conditions:
       - title ~= ^GATE1_
+      - -mergify-configuration-changed
     actions:
       queue:
