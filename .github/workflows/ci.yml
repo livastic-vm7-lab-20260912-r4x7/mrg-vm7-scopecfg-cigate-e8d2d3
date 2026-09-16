@@ -1,0 +1,59 @@
+name: Gate1 Trusted Monorepo CI
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  detect-scopes:
+    name: detect-scopes
+    runs-on: ubuntu-24.04
+    outputs:
+      critical: ${{ fromJSON(steps.scopes.outputs.scopes).critical }}
+      docs: ${{ fromJSON(steps.scopes.outputs.scopes).docs }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: scopes
+        uses: Mergifyio/gha-mergify-ci@v25
+        with:
+          action: scopes
+      - name: Show detected scopes
+        env:
+          SCOPES: ${{ steps.scopes.outputs.scopes }}
+        run: echo "scopes=$SCOPES"
+  critical-tests:
+    name: critical-tests
+    needs: detect-scopes
+    if: ${{ needs.detect-scopes.outputs.critical == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Enforce protected critical marker invariant
+        run: |
+          if [ -f critical/poison-marker.txt ]; then
+            echo "::error::critical/poison-marker.txt must not reach protected main without this job passing"
+            exit 1
+          fi
+  docs-tests:
+    name: docs-tests
+    needs: detect-scopes
+    if: ${{ needs.detect-scopes.outputs.docs == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "docs scope validated"
+  ci-gate:
+    name: ci-gate
+    if: ${{ !cancelled() }}
+    needs:
+      - detect-scopes
+      - critical-tests
+      - docs-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report aggregate CI status
+        uses: Mergifyio/gha-mergify-ci@v25
+        with:
+          action: wait-jobs
+          jobs: ${{ toJSON(needs) }}
