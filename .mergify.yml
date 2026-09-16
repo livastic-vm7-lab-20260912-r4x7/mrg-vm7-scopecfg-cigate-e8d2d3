@@ -1,0 +1,24 @@
+scopes:
+  source:
+    files:
+      critical:
+        include:
+          - critical/**
+      docs:
+        include:
+          - docs/**
+merge_queue:
+  mode: serial
+queue_rules:
+  - name: default
+    queue_conditions: []
+    merge_conditions:
+      - check-success = ci-gate
+    batch_size: 1
+    merge_method: merge
+pull_request_rules:
+  - name: gate1 trusted autoqueue
+    conditions:
+      - title ~= ^GATE1_
+    actions:
+      queue:
